@@ -30,4 +30,4 @@ To preserve the original vision of IDRT, the following guiding principles should
   * 2020: first draft
 
 ## Copyright
-The copyright is held by the [North American Bikeshare Association](https://nabsa.net/).
+The copyright is held by [rms GmbH](https://www.rms-consult.de/).
