@@ -59,7 +59,7 @@ Booking:Change | Yes | Other parameters besides the status of the booking have c
 Availability:Monitor | Yes | The requested ride is available again.
 
 ## Endpoints DRT-system
-The following endpoints are provided by the DRT-system and are used by the MaaS-Platform (RMVplus).
+The following endpoints are provided by the DRT-system.
 
 ### Service (GET)
 Defines the type, geographic area and service periode of available DRT-services.
@@ -90,18 +90,15 @@ termsAndConditions | Yes | JSON-Object | Information regarding the terms and con
 `- releaseDate` | Yes | Date | Release date of the terms and conditions.
 `- url` | Yes | String | URL where the terms and conditions can be accessed. The URL should point to a responsive HTML web site.
 `preBookingMinutes` | Yes | Number | Number of minutes a booking can be placed into the future.
-`bookingProcess` | Yes | String | Type of the booking process used. Either "explicit" or "implicit".
+`bookingProcess` | Yes | String | Type of the booking process supported. Either "explicit", "implicit" or "both".
 tariff | Yes | Array | Array of JSON-Objects describing the available tariffs.
 `- id` | Yes | String | Identifier for the tariff.
 `- name` | Yes | String | Name of the tariff to be displayed e.g. to customers.
 `- description` | Yes | String | Description of the tariff to be displayed e.g. to customers.
 services | Yes | Array | Array of JSON-Objects describing the spacial area, operating periods and type of the service.
 `- maximumPassengersPerBooking` | Yes | Number | Maximum number of passengers for a single booking.
-\- area | Conditionally required | GeoJSON FeatureCollection | A FeatureCollection (as described by the IETF RFC 7946). Spatially describing the area of service. Optionally if virtual stops are used.
-`- - features` | Yes | Array | Array of FeatureObjects.
-`- - - type` | Yes | String | "feature" (as per IETF RFC 7946).
-`- - - geometry` | Yes | GeoJSON Multipolygon | A multipolygon that describes the service area. A clockwise arrangement of points defines the area enclosed by the polygon, while a counterclockwise order defines the area outside the polygon (right-hand rule).
-\- virtualStops | Conditionally required | Array | Array of JSON-Objects. Trips can start and end at virtual stops. Optionally if service area is used.
+`- area` | Yes | GeoJSON Multipolygon | A multipolygon as described by the IETF RFC 7946 that describes the service area. For Polygons with more than one ring, the first MUST be the exterior ring, and any others MUST be interior rings.  The exterior ring bounds the surface, and the interior rings (if present) bound holes within the surface.
+\- virtualStops | Optional | Array | Array of JSON-Objects. Trips can start and end at virtual stops.
 `- - id` | Yes | String | Identifier of the virtual stop.
 `- - name` | Yes | String | Name of the virtual stop.
 `- - description` | Optional | String | Additional description of the virtual stop, e.g. "in front of 7-eleven".
@@ -113,11 +110,75 @@ services | Yes | Array | Array of JSON-Objects describing the spacial area, oper
 \- bookableOptions | Optional | Array | Array of JSON-Objects describing the bookable options e.g. stroller.
 `- - id` | Yes | String | Identifier of the option.
 `- - name` | Yes | String | Name of the option e.g. stroller, wheelchair.
-`- - maximumPerBooking` | Yes | String | Maximum number of options for a single booking.
+`- - maximumPerBooking` | Yes | Number | Maximum number of options for a single booking.
 customerApp | Yes | Array | Array of JSON-Objects providing customer app information.
 `- os` | Yes | String | Identifier of the operating system, e.g. iOS.
 `- storeUri` | Optional | String | A URI where the customer app can be downloaded from. Typically this will be a URI to an app store such as Google Play. If the URI points to an app store such as Google Play, the URI should follow Android best practices so an app can directly open the URI to the native app store app instead of a website. If a rentalUri field is populated then this field is required, otherwise it is optional.
 `- discoveryUri` | Optional | String | A URI that can be used to discover if the customer app is installed on the device (e.g., using UIApplication canOpenURL:). This intent is used by apps prioritize customer apps for a particular user based on whether they already have a particular customer app installed. This field is required if a rentalUri field is populated, otherwise it is optional.
+
+#### Example Response 200
+```jsonc
+{
+    "serviceId": "1",
+    "name": "Super DRT One",
+    "shortName": "One",
+    "description": "Super fast and super comfortable DRT service.",
+    "operator": "DRT Inc.",
+    "url": "https://super-drt-one.com",
+    "logoUrl": "https://super-drt-one.com/logo.png",
+    "termsAndConditions": {
+        "releaseDate": "2020-01-23T00:00:00.000Z",
+        "url": "https://super-drt-one.com/terms"
+    },
+    "preBookingMinutes": 120,
+    "bookingProcess": "explicit",
+    "tariff": [{
+            "id": "1",
+            "name": "pay per use",
+            "description": "simple pay per use tarif"
+        }
+    ],
+    "services": [{
+            "maximumPassengersPerBooking": 2,
+            "area": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [120.0, 40.0], [120.0, 50.0], [110.0, 50.0], [110.0, 40.0], [120.0, 40.0]/*outer*/
+                        ],
+                        [
+                            [122.0, 42.0], [122.0, 44.0], [124.0, 44.0], [124.0, 42.0], [120.0, 42.0]/*hole*/
+                        ]
+                    ]
+                ]
+            },
+            "virtualStops": [{
+                    "id": "st01",
+                    "name": "market place",
+                    "description": "south east corner",
+                    "point": {
+                        "type": "Point",
+                        "coordinates": [115.0, 45.0]
+                    }
+                }
+            ]
+        }
+    ],
+    "operatingPeriods": [{
+            "id": "1",
+            "start": "2020-03-01T00:00:00.000Z",
+            "end": "2020-05-01T00:00:00.000Z"
+        }
+    ],
+    "bookableOptions": [{
+            "id": "1",
+            "name": "stroller",
+            "maximumPerBooking": 2
+        }
+    ]
+}
+```
 
 ### Availability (GET)
 Checks if a ride for the given origin, destination and time is possible. It is recommended to always use geo points for origin and destination even for services only operating between virtual stops. This allows the DRT-system to choose the most appropriate virtual stop even if this stop might not be the closest one. 
@@ -132,11 +193,12 @@ Field Name | Required | Type | Defines
 `departureTime` | Conditionally required | Date | Date and time when the trip should start. This field is required if arrivalTime is not given.
 `arrivalTime` | Conditionally required | Date | Date and time when the trip should reach its destination. This field is required if departureTime is not given. If departureTime ist given this field is ignored.
 `passengerNumber` | Yes | String | Number of passengers.
-`maximumWalkingDistance` | Optional | String | Maximum walking distance in meter between start point of the trip and pick up location and between drop off location and end point.
+`maximumWalkingDistance` | Optional | Number | Maximum walking distance in meter between start point of the trip and pick up location and between drop off location and end point.
 `tarifID` | Yes | String | Identifier of the used tariff.
 bookableOptions | Optional | Array | Array of JSON-Objects describing the bookable options e.g. stroller.
 `- id` | Yes | String | Identifier of the option.
-`- number` | Yes | String | Number of options to book.
+`- number` | Yes | Number | Number of options to book.
+`bookingProcess` | Yes | String | Type of booking process to use for this request. Either "explicit" or "implicit".
 `availabilityMonitor` | Optional | Boolean | If "yes" the availability will be monitored if the ride request can't  be fulfilled right now. If the requested ride can be served again a booking is created automatically and the given URL is called (Webhook). The created booking needs to be confirmed. In order to have this feature working the corresponding webhook "Availability:Monitor" must be subscribedn to.
 `customerID` | Conditionally required | String | If the availablility is monitored an identifier of the customer is required. It will be used for the automatically created booking once the ride becomes available.
 
@@ -175,12 +237,100 @@ tripSegment | Yes | Array | Array of JSON-Objects providing information for each
 `- mode` | Yes | String | Either "walk" or "ride".
 `- distance` | Conditionally required | String | Distance of the segment in meters if it's a walking segment.
 `- routeOutline` | Optional | GeoJson LineString | Visual representation of the trip segment as LineString to be displayed on a map to the customer. The outline is based on the map used by the DRT-system which might be different to the map used by the third-party system.
-`price` | Yes | String | Price of the trip.
-`currency` | Yes | String | Currency the price is in (ISO 4217 code: http://en.wikipedia.org/wiki/ISO_4217).
+price | Yes | JSON-Object | JSON-Object with information regarding the price of the trip.
+`- amount` | Yes | Number | Price of the trip.
+`- currency` | Yes | String | Currency the price is in (ISO 4217 code: http://en.wikipedia.org/wiki/ISO_4217).
 `bookingId` | Optional | String | Identification of the booking. Only if implicit booking is used.
-bookingUrl | Yes | String | A JSON object that contains rental URLs (deep links).
+bookingUrl | Optional | String | A JSON object that contains rental URLs (deep links).
 `- os` | Yes | String | Identifier of the operating system.
 `- uri` | Yes | String | This URI should be a deep link specific to this ride, and should not be a general page that includes general information for the DRT-service. 
+
+
+#### Example Response 200
+```jsonc
+{
+    "StartPoint": {
+        "type": "Point",
+        "coordinates": [115.0, 45.0]
+    },
+    "startAddress": "Market Place 1",
+    "endPoint": {
+        "type": "Point",
+        "coordinates": [112.0, 42.0]
+    },
+    "endAddress": "Grumman Square 3204",
+    "departureTime": {
+        "earliest": "2020-07-23T08:10:00.000Z",
+        "latest": "2020-07-23T08:12:00.000Z"
+    },
+    "arrivalTime": {
+        "earliest": "2020-07-23T08:20:00.000Z",
+        "latest": "2020-07-23T08:25:00.000Z"
+    },
+    "tripSegment": [{
+            "StartPoint": {
+                "type": "Point",
+                "coordinates": [115.0, 45.0]
+            },
+            "startAddress": "Market Place 1",
+            "departureTime": {
+                "earliest": "2020-07-23T08:10:00.000Z",
+                "latest": "2020-07-23T08:12:00.000Z"
+            },
+            "endPoint": {
+                "type": "Point",
+                "coordinates": [112.0, 42.1]
+            },
+            "endAddress": "Kings Grant 1200",
+            "arrivalTime": {
+                "earliest": "2020-07-23T08:17:00.000Z",
+                "latest": "2020-07-23T08:22:00.000Z"
+            },
+            "mode": "ride",
+            "routeOutline": {
+                "type": "LineString",
+                "coordinates": [
+                    [100.0, 0.0],
+                    [101.0, 1.0]
+                ]
+            }
+        }, {
+            "StartPoint": {
+                "type": "Point",
+                "coordinates": [112.0, 42.1]
+            },
+            "startAddress": "Kings Grant 1200",
+            "departureTime": {
+                "earliest": "2020-07-23T08:17:00.000Z",
+                "latest": "2020-07-23T08:22:00.000Z"
+            },
+            "endPoint": {
+                "type": "Point",
+                "coordinates": [112.0, 42.0]
+            },
+            "endAddress": "Grumman Square 3204",
+            "arrivalTime": {
+                "earliest": "2020-07-23T08:20:00.000Z",
+                "latest": "2020-07-23T08:25:00.000Z"
+            },
+            "mode": "walk",
+            "distance": 200,
+            "routeOutline": {
+                "type": "LineString",
+                "coordinates": [
+                    [100.0, 0.0],
+                    [101.0, 1.0]
+                ]
+            }
+        }
+    ],
+    "price": {
+        "amount": 3.40,
+        "currency": "USD"
+    }
+}
+```
+
 
 #### Response 422
 Field Name | Required | Type | Defines
@@ -237,12 +387,12 @@ Field Name | Required | Type | Defines
 `endVirtualStop` | Conditionally required | String | Virtual end stop of the trip. This field is required if endPoint is not given. If endPoint is given this field is ignored.
 `departureTime` | Conditionally required | Date | Date and time when the trip should start. This field is required if arrivalTime is not given.
 `arrivalTime` | Conditionally required | Date | Date and time when the trip should reach its destination. This field is required if departureTime is not given. If departureTime is given this field is ignored.
-`passengerNumber` | Yes | String | Number of passengers.
-`maximumWalkingDistance` | Yes | String | Maximum walking distance in meter between start point of the trip and pick up location and between drop off location and end point.
+`passengerNumber` | Yes | Number | Number of passengers.
+`maximumWalkingDistance` | Yes | Number | Maximum walking distance in meter between start point of the trip and pick up location and between drop off location and end point.
 `tarifID` | Yes | String | Identifier of the used tariff.
 bookableOptions | Optional | Array | Array of JSON-Objects describing the bookable options e.g. stroller.
 `- id` | Yes | String | Identifier of the option.
-`- number` | Yes | String | Number of options to book.
+`- number` | Yes | Number | Number of options to book.
 `type` | Yes | String | Either "booking" or "reservation". If the trip is reserved it is not booked yet. It is only reserved for a system specific time and it's not bookable for others. It must be confirmed within the specified time frame. If not confirmed the reservation will be released.
 
 #### Responses
@@ -267,7 +417,7 @@ departureTime | Yes | JSON-Object | JSON-Object providing the departure time.
 arrivalTime | Yes | JSON-Object | JSON-Object providing the arrival time.
 `- earliest` | Yes | Date | Estimated earliest date and time of arrival.
 `- latest` | Yes | Date | Estimated latest date and time of arrival.
-`passengerNumber` | Yes | String | Number of passengers.
+`passengerNumber` | Yes | Number | Number of passengers.
 `bookingCode` | Optional | String | Code for this booking. The code e.g. can be used to identify the customer at pick up.
 `maximumTimeWindow` | Yes | String | Difference between estimated departure time and latest departure time in minutes.
 tripSegment | Yes | Array | Array of JSON-Objects providing information for each segment of the trip.
@@ -282,10 +432,10 @@ tripSegment | Yes | Array | Array of JSON-Objects providing information for each
 `- - earliest` | Yes | Date | Estimated earliest date and time of arrival.
 `- - latest` | Yes | Date | Estimated latest date and time of arrival.
 `- mode` | Yes | String | Either "walk" or "ride".
-`- distance` | Conditionally required | String | Distance of the segment in meters if it's a walking segment.
+`- distance` | Conditionally required | Number | Distance of the segment in meters if it's a walking segment.
 `- routeOutline` | Yes | GeoJson LineString | Visual representation of the trip segment as LineString to be displayed on a map to the customer. The outline is based on the map used by the DRT-system which might be different to the map used by the third-party system.
 price | Yes | JSON-Object | JSON-Object with information regarding the price of the trip.
-`- amount` | Yes | String | Price of the trip.
+`- amount` | Yes | Number | Price of the trip.
 `- currency` | Yes | String | Currency the price is in (ISO 4217 code: http://en.wikipedia.org/wiki/ISO_4217).
 vehicle | Yes | JSON-Object | JSON-Object with information to the scheduled vehicle and driver.
 `- description` | Optional | String | Description of the scheduled vehicle e.g. brand and model.
@@ -353,7 +503,7 @@ departureTime | Yes | JSON-Object | JSON-Object providing the departure time.
 arrivalTime | Yes | JSON-Object | JSON-Object providing the arrival time.
 `- earliest` | Yes | Date | Estimated earliest date and time of arrival.
 `- latest` | Yes | Date | Estimated latest date and time of arrival.
-`passengerNumber` | Yes | String | Number of passengers.
+`passengerNumber` | Yes | Number | Number of passengers.
 `bookingCode` | Optional | String | Code for this booking. The code e.g. can be used to identify the customer at pick up.
 `maximumTimeWindow` | Yes | String | Difference between estimated departure time and latest departure time in minutes.
 tripSegment | Yes | Array | Array of JSON-Objects providing information for each segment of the trip.
@@ -368,10 +518,10 @@ tripSegment | Yes | Array | Array of JSON-Objects providing information for each
 `- - earliest` | Yes | Date | Estimated earliest date and time of arrival.
 `- - latest` | Yes | Date | Estimated latest date and time of arrival.
 `- mode` | Yes | String | Either "walk" or "ride".
-`- distance` | Conditionally required | String | Distance of the segment in meters if it's a walking segment.
+`- distance` | Conditionally required | Number | Distance of the segment in meters if it's a walking segment.
 `- routeOutline` | Yes | GeoJson LineString | Visual representation of the trip segment as LineString to be displayed on a map to the customer. The outline is based on the map used by the DRT-system which might be different to the map used by the third-party system.
 price | Yes | JSON-Object | JSON-Object with information regarding the price of the trip.
-`- amount` | Yes | String | Price of the trip.
+`- amount` | Yes | Number | Price of the trip.
 `- currency` | Yes | String | Currency the price is in (ISO 4217 code: http://en.wikipedia.org/wiki/ISO_4217).
 vehicle | Yes | JSON-Object | JSON-Object with information to the scheduled vehicle and driver.
 `- description` | Optional | String | Description of the scheduled vehicle e.g. brand and model.
@@ -451,7 +601,7 @@ Field Name | Required | Type | Defines
 `customerID` | Yes | String | Identifier of the customer used by the MaaS-platform.
 `invoiceID` | Yes | String | Identifier of this invoice.
 `date` | Yes | String | Date the invoice was created.
-`totalPrice` | Yes | String | Total price of this invoice.
+`totalPrice` | Yes | Number | Total price of this invoice.
 `currency` | Yes | String | Currency the totalPrice is in (ISO 4217 code: http://en.wikipedia.org/wiki/ISO_4217).
 items | Yes | Array | Array of bookings included in this invoice.
 `- bookingId` | No | String | Identification of the booking if the invoice item is related to a booking. A refund might not be related to a specific booking.
