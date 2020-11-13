@@ -14,14 +14,78 @@ This section defines terms that are used throughout this document.
 * Optional - The field may be omitted. An omitted field is equivalent to a field that is empty. If a parent element is optional the element itself and all it's child elements may be omitted regardless if the child elements are defined as required.
 * Conditionally required - The field is required under certain conditions, which are outlined in the field description. Outside of these conditions, this field is optional.
 
+## General Usage Process
+When third party systems like a MaaS-platform provide DRT-Service to it's users via IDRT the process in general include the following steps:
+1. Provide Customer Data: for identifying the customer in the support or for invoicing a minimal set of customer data must be provided by the MaaS-platform.
+2. Check Availability: The DRT-service has a flexible schedule so that availability and exact service time must be checked in advance.
+3. Book Ride: the DRT-Service can only be utilized when a ride has been booked in advance. 
+
+And if the MaaS-platform handles the payment process these additional steps might follow:
+1. Retrieve Invoice: The consumed service is invoiced and the relevant invoice data is fetched by the MaaS-platform.
+5. Update Invoice Payment Status: The status of the payment process is provided to the DRT-System.
+
 ## Booking Process
 There are two distinct processes how DRT-Systems can handle the booking process:
 
 ### Explicit Booking
-The booking is done explicitly by using the booking (POST) endpoint and might need to be confirmed using the confirmation (POST) endpoint. Neither are rides booked nor reserved in any form when using the availabilty endpoint.
+The booking is done explicitly by using the booking (POST) endpoint and might need to be confirmed using the confirmation (POST) endpoint. Neither are rides booked nor reserved in any form when using the availability endpoint.
 
 ### Implicit Booking
-The booking is done implicitly by checking the availability for the requested ride. If this ride is available it is reserved automatically for a system specific time range and needs to be confirmed only. No seperated booking (POST) request is necessary.
+The booking is done implicitly by checking the availability for the requested ride. If this ride is available it is reserved automatically for a system specific time range and needs to be confirmed only. No separated booking (POST) request is necessary.
+
+## Booking States
+The status of the booking object changes during it's lifespan. While the DRT-System internally might use more fine grained states at least the following states should be exposed:
+
+State | Description 
+--- | --- 
+reserved | The requested ride is reserved.
+booked | The requested ride is booked.
+scheduled | Ride is dispatched to a vehicle. The information regarding e.g. vehicle number, driver name is available.
+in approach | Vehicle is in approach to the pick up location. The liveApproachUrl is available.
+arrived | Vehicle has arrived at the pick up location.
+on route | Vehicle is on route to the drop off location.
+done | Ride has been completed.
+no show | User wasn't present at the pick up location.
+canceled by user | User canceled the ride.
+canceled by system | Ride was canceled by the system.
+
+            O                         O
+            |                         |
+            |                         |
+           \/                        \/
+     |-------------|           |-------------|
+     |  reserved   | --------> |    booked   | ----|
+     |-------------|     ----- |-------------|     |
+            |            |            |            |
+           \/            |            |            |
+           /\            |           \/            |
+       reservation       |     |-------------|     |     |-------------|
+        timed out        |---- |  scheduled  | --------> | canceled by |
+                         |     |-------------|     |     |    user     |
+                         |            |            |     |-------------|
+                         |            |            |
+                         |           \/            |
+     |-------------|     |     |-------------|     |
+     | canceled by | <-------- | in approach | ----
+     |   system    |           |-------------|
+     |-------------|                  |
+                                      |
+                                     \/
+     |-------------|           |-------------|
+     |   no show   | <-------- |   arrived   |
+     |-------------|           |-------------|
+                                      |
+                                      |
+                                     \/
+                               |-------------|
+                               |  on route   |
+                               |-------------|
+                                      |
+                                      |
+                                     \/
+                               |-------------|
+                               |    done     |
+                               |-------------|
 
 ## Authentication
 For authentication an API key and secret are required across all endpoints. They must be present in the header of the requests as X-Api-Key and X-Api-Secret respectively. The API key is used for identifying the calling third-party-system too.
@@ -97,13 +161,14 @@ termsAndConditions | Yes | JSON-Object | Information regarding the terms and con
 `- releaseDate` | Yes | Date | Release date of the terms and conditions.
 `- url` | Yes | String | URL where the terms and conditions can be accessed. The URL should point to a responsive HTML web site.
 `preBookingMinutes` | Yes | Integer | Number of minutes a booking can be placed into the future.
+`maximumPassengersPerBooking` | Yes | Integer | Maximum number of passengers for a single booking.
+`minimumOperatingDistance` | Yes | Integer | Minimum network distance in meters between start and end that will be served.
 `bookingProcess` | Yes | String | Type of the booking process supported. Either "explicit", "implicit" or "both".
 tariff | Yes | Array | Array of JSON-Objects describing the available tariffs.
 `- id` | Yes | String | Identifier for the tariff.
 `- name` | Yes | String | Name of the tariff to be displayed e.g. to customers.
 `- description` | Yes | String | Description of the tariff to be displayed e.g. to customers.
 services | Yes | Array | Array of JSON-Objects describing the spacial area, operating periods and type of the service.
-`- maximumPassengersPerBooking` | Yes | Integer | Maximum number of passengers for a single booking.
 `- area` | Yes | GeoJSON Multipolygon | A multipolygon as described by the IETF RFC 7946 that describes the service area. For Polygons with more than one ring, the first MUST be the exterior ring, and any others MUST be interior rings.  The exterior ring bounds the surface, and the interior rings (if present) bound holes within the surface.
 \- virtualStops | Optional | Array | Array of JSON-Objects. Trips can start and end at virtual stops.
 `- - id` | Yes | String | Identifier of the virtual stop.
@@ -360,7 +425,7 @@ Code | Descritption
 104 | "No rides are possible between the requested start & end point and time."
 105 | "Ride request can't be satisfied for this number of passengers."
 106 | "The bookable option can not be satisfied: {name}."
-200 | "Ride request can't be satisfied at this time. The availablility will be monitored."
+200 | "Ride request can't be satisfied at this time. The availability will be monitored."
 
 ### Customer (POST)
 Transfers the customer data which is necessary to conclude a contract between DRT-service provider and customer. It is recommended to create shadow accounts only and keep customers in separate groups for each MaaS-platform.
@@ -510,7 +575,7 @@ Field Name | Required | Type | Defines
 `endPoint` | Yes | GeoJson POINT | End point of the trip.
 `endAddress` | Optional | String | Address of the end point of the trip to be displayed to the customer.
 departureTime | Yes | JSON-Object | JSON-Object providing the departure time.
-`- earliest` | Yes | Date | Estimated earliest date and time of departure. It is strongly recommended to adivce the customer to be present at the departure point at this time.
+`- earliest` | Yes | Date | Estimated earliest date and time of departure. It is strongly recommended to advice the customer to be present at the departure point at this time.
 `- latest` | Yes | Date | Estimated latest date and time of departure.
 arrivalTime | Yes | JSON-Object | JSON-Object providing the arrival time.
 `- earliest` | Yes | Date | Estimated earliest date and time of arrival.
