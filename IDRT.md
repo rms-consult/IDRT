@@ -112,22 +112,23 @@ Field Name | Required | Type | Defines
 --- | ---| --- | ---
 `event` | Yes | String | Name of the event triggering the message.
 `objectRef` | Yes | String | The reference of the object. Either a "bookingId" or a "availabilityId".
-`object` | Yes | JSON-Object | The corresponding object to the event - always a booking object is returned.
+`object` | Yes | JSON-Object | The corresponding object to the event.
 
 ### Events
 Possible events are:
 
-Event name | Required | Description 
+Event name | Object included | Description 
 --- | --- | ---
-Booking:Status | Yes | The status of the booking has changed.
-Booking:Change | Yes | Other parameters besides the status of the booking have changed, e.g. the assigned vehicle.
-Availability:Monitor | Yes | The requested ride is available again.
+Booking:Status | Booking | The status of the booking has changed.
+Booking:Change | Booking | Other parameters besides the status of the booking have changed, e.g. the assigned vehicle.
+Availability:Monitor | Availability | The requested ride is available again.
+vehicleLocation:Update | vehicleLocation | The location of the vehicle has changed.
 
 ## Endpoints DRT-system
 The following endpoints are provided by the DRT-system.
 
 ### Service (GET)
-Defines the type, geographic area and service periode of available DRT-services.
+Defines the type, geographic area and service period of available DRT-services.
 
 Query Parameter | Required | Type | Defines
 --- | ---| --- | ---
@@ -416,7 +417,7 @@ Field Name | Required | Type | Defines
 `description` | Yes | String | Human readable error description.
 `availabilityId` | Optional | String | If an availability monitor was requested a reference is provided. When the ride will be available again this reference will be included in the webhook message. 
 
-Code | Descritption 
+Code | Description 
 --- | ---
 100 | "Start or end point outside of service area."
 101 | "Departure or arrival time outside of service operating times."
@@ -520,7 +521,6 @@ vehicle | Yes | JSON-Object | JSON-Object with information to the scheduled vehi
 `- licensePlate` | Optional | String | License plate of the scheduled vehicle.
 `- pictureUrl` | Optional | String | URL where a picture of the scheduled vehicle can be retrieved.
 `- driverName` | Optional | String | Name of the driver.
-`liveApproachUrl` | Conditional required | String | If the vehicle is on the way to the pick up location the provided URL gives live updates regarding the approach particularly the position of the vehicle and the ETA. The URL is intended to be used by apps in order to visualize the approach of the vehicle to the customer.
 
 #### Response 422
 Field Name | Required | Type | Defines
@@ -528,7 +528,7 @@ Field Name | Required | Type | Defines
 `code` | Yes | String | Code, as listed below.
 `description` | Yes | String | Human readable error description.
 
-Code | Descritption 
+Code | Description 
 --- | ---
 100 | "Start or end point outside of service area."
 101 | "Departure or arrival time outside of service operating times."
@@ -622,8 +622,30 @@ http status code | Description
 400 | Invalid request
 500 | Unexpected error
 
+### vehicleLocation (GET)
+Get the current location of the vehicle, which is dispatched for the ride. The location must only be available for bookings with the status "in approach", "arrived" and "on route". The location is intended to be used to visualize the approach of the vehicle to the customer.
+
+Query Parameter | Required | Type | Defines
+--- | ---| --- | ---
+`bookingId` | Yes | String | Identification of the booking.
+
+#### Responses
+http status code | Description 
+--- | ---
+200 | Request successful
+400 | Invalid request
+404 | Booking not found
+
+#### Response 200
+Field Name | Required | Type | Defines
+--- | ---| --- | ---
+`bookingId` | Yes | String | Identification of the booking.
+`location` | Yes | GeoJson POINT | Current location of the vehicle. The location is based on the map used by the DRT-system which might be different to the map used by the third-party system.
+`bearing` | Optional | Number | Current absolute bearing of the vehicle in degrees.
+`lastUpdate` | Optional | Date |Timepoint of the last location update. 
+
 ### Subscription (POST)
-Creat a webhook for the specified type of events.
+Create a webhook for the specified type of events.
 
 Field Name | Required | Type | Defines
 --- | ---| --- | ---
@@ -706,8 +728,9 @@ Field Name | Required | Type | Defines
 `code` | Yes | String | Code, as listed below.
 `description` | Yes | String | Human readable error description.
 
-Code | Descritption 
+Code | Description 
 --- | ---
 100 | "Customer unknown."
 101 | "Invoice doesn't exist."
 103 | "Invalid status."
+
