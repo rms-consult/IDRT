@@ -429,11 +429,11 @@ Code | Description
 200 | "Ride request can't be satisfied at this time. The availability will be monitored."
 
 ### Customer (POST)
-Transfers the customer data which is necessary to conclude a contract between DRT-service provider and customer. It is recommended to create shadow accounts only and keep customers in separate groups for each MaaS-platform.
+Create a customer account. It's recommended to provide the option to create shadow accounts for MaaS-platform customers. This way customers can be kept separate in order e.g. to handle different billing processes.
 
 Field Name | Required | Type | Defines
 --- | ---| --- | ---
-`customerId` | Yes | String | Identifier of the customer used by the MaaS-platform. Bookings are performed on behalf of the customer.
+`customerId` | Yes | String | Identifier of the customer used by the third party. Bookings are performed on behalf of the customer.
 `firstName` | Yes | String | First name of the customer.
 `lastName` | Yes | String | Last name of the customer.
 Address | Optional | JSON-Object | JSON-Object with address information.
@@ -444,11 +444,85 @@ Address | Optional | JSON-Object | JSON-Object with address information.
 `- country` | Yes | String | Name of the country.
 `email` | Yes | String | Email-address of the customer.
 `mobileNumber` | Optional | String | Mobile phone number.
+`defaultBookableOptions` | Optional | Array | Default bookable options.
+`- bookableOptions_<id>` | Yes | Integer | Default number of options to book for the bookable option with the given <id>.
 
 #### Responses
 http status code | Description 
 --- | ---
-204 | Transfer successful
+201 | Creation successful
+400 | Invalid request
+500 | Unexpected error
+
+### Customer (PATCH)
+Update customer data.
+
+Field Name | Required | Type | Defines
+--- | ---| --- | ---
+`customerId` | Yes | String | Identifier of the customer used by the third party.
+`firstName` | Yes | String | First name of the customer.
+`lastName` | Yes | String | Last name of the customer.
+Address | Optional | JSON-Object | JSON-Object with address information.
+`- street` | Yes | String | Name of the street.
+`- houseNumber` | Yes | String | House number.
+`- city` | Yes | String | Name of the city.
+`- postcode` | Yes | String | Postal code of the city.
+`- country` | Yes | String | Name of the country.
+`email` | Yes | String | Email-address of the customer.
+`mobileNumber` | Optional | String | Mobile phone number.
+`defaultBookableOptions` | Optional | Array | Default bookable options.
+`- bookableOptions_<id>` | Yes | Integer | Default number of options to book for the bookable option with the given <id>.
+
+#### Responses
+http status code | Description 
+--- | ---
+200 | Update successful
+400 | Invalid request
+500 | Unexpected error
+
+### Customer (GET)
+Get customer data.
+
+Field Name | Required | Type | Defines
+--- | ---| --- | ---
+`customerId` | Yes | String | Identifier of the customer used by the third party.
+
+#### Responses
+http status code | Description 
+--- | ---
+200 | Query successful
+400 | Invalid request
+500 | Unexpected error
+
+#### Response 200
+Field Name | Required | Type | Defines
+--- | ---| --- | ---
+`customerId` | Yes | String | Identifier of the customer used by the third party.
+`creationDate` | Yes | Date | Date when the account was created.
+`firstName` | Yes | String | First name of the customer.
+`lastName` | Yes | String | Last name of the customer.
+Address | Optional | JSON-Object | JSON-Object with address information.
+`- street` | Yes | String | Name of the street.
+`- houseNumber` | Yes | String | House number.
+`- city` | Yes | String | Name of the city.
+`- postcode` | Yes | String | Postal code of the city.
+`- country` | Yes | String | Name of the country.
+`email` | Yes | String | Email-address of the customer.
+`mobileNumber` | Optional | String | Mobile phone number.
+`defaultBookableOptions` | Optional | Array | Default bookable options.
+`- bookableOptions_<id>` | Yes | Integer | Default number of options to book for the bookable option with the given <id>.
+
+### Customer (DELETE)
+Delete a customer account.
+
+Field Name | Required | Type | Defines
+--- | ---| --- | ---
+`customerId` | Yes | String | Identifier of the customer used by the third party.
+
+#### Responses
+http status code | Description 
+--- | ---
+204 | Deletion successful
 400 | Invalid request
 500 | Unexpected error
 
@@ -733,4 +807,5 @@ Code | Description
 100 | "Customer unknown."
 101 | "Invoice doesn't exist."
 103 | "Invalid status."
+
 
