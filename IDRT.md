@@ -253,32 +253,27 @@ customerApp | Yes | Array | Array of JSON-Objects providing customer app informa
 }
 ```
 
-### Availability (GET)
+### Availability (POST)
 Checks if a ride for the given origin, destination and time is possible. It is recommended to always use geo points for origin and destination even for services only operating between virtual stops. This allows the DRT-system to choose the most appropriate virtual stop even if this stop might not be the closest one.
 
-Query Parameter | Required | Type | Defines
+Field Name | Required | Type | Defines
 --- | ---| --- | ---
-`serviceId` | Yes | String | Identifier of the DRT-service.
-`startPointLat` | Conditionally required | Double | Latitude of the trip start point. This field is required if startVirtualStop is not given.
-`startPointLon` | Conditionally required | Double | Longitude of the trip start point. This field is required if startVirtualStop is not given.
+`serviceID` | Yes | String | Identifier of the DRT-service.
+`startPoint` | Conditionally required | GeoJson POINT | Start point of the trip. This field is required if startVirtualStop is not given.
 `startVirtualStop` | Conditionally required | String | Virtual start stop of the trip. This field is required if startPoint is not given. If startPoint is given this field is ignored.
-`endPointLat` | Conditionally required | Double | Latitude of the trip end point. This field is required if endVirtualStop is not given.
-`endPointLon` | Conditionally required | Double | Longitude of the trip end point. This field is required if endVirtualStop is not given.
+`endPoint` | Conditionally required | GeoJson POINT | End point of the trip. This field is required if endVirtualStop is not given.
 `endVirtualStop` | Conditionally required | String | Virtual end stop of the trip. This field is required if endPoint is not given. If endPoint is given this field is ignored.
 `departureTime` | Conditionally required | Date | Date and time when the trip should start. This field is required if arrivalTime is not given.
 `arrivalTime` | Conditionally required | Date | Date and time when the trip should reach its destination. This field is required if departureTime is not given. If departureTime ist given this field is ignored.
-`passengerNumber` | Yes | Integer | Number of passengers.
-`maximumWalkingDistance` | Optional | Integer | Maximum walking distance in meter between start point of the trip and pick up location and between drop off location and end point.
-`tarifId` | Optional | String | Identifier of the used tariff.
-`bookableOptions_<id>` | Optional | Integer | Number of options to book for the bookable option with the given <id> provided by the service request.
+`passengerNumber` | Yes | Number | Number of passengers.
+`maximumWalkingDistance` | Optional | Number | Maximum walking distance in meter between start point of the trip and pick up location and between drop off location and end point.
+`tarifID` | Yes | String | Identifier of the used tariff.
+bookableOptions | Optional | Array | Array of JSON-Objects describing the bookable options e.g. stroller.
+`- id` | Yes | String | Identifier of the option.
+`- number` | Yes | Number | Number of options to book.
 `bookingProcess` | Yes | String | Type of booking process to use for this request. Either "explicit" or "implicit".
-`availabilityMonitor` | Optional | Boolean | Default "no". If "yes" the availability will be monitored if the ride request can't  be fulfilled right now. If the requested ride can be served again a booking is created automatically and the given URL is called (Webhook). The created booking needs to be confirmed. In order to have this feature working the corresponding webhook "Availability:Monitor" must be subscribedn to.
-`customerId` | Conditionally required | String | If the availablility is monitored an identifier of the customer is required. It will be used for the automatically created booking once the ride becomes available.
-
-#### Example Request
-```http
-/availability?serviceId=1&startPointLat=45.0&startPointLon=115.0&endPointLat=42.0&endPointLon=112.0&departureTime=2020-03-01T00:00:00.000Z&passengerNumber=1&bookableOptions_1=1
-```
+`availabilityMonitor` | Optional | Boolean | If "yes" the availability will be monitored if the ride request can't  be fulfilled right now. If the requested ride can be served again a booking is created automatically and the given URL is called (Webhook). The created booking needs to be confirmed. In order to have this feature working the corresponding webhook "Availability:Monitor" must be subscribedn to.
+`customerID` | Conditionally required | String | If the availablility is monitored an identifier of the customer is required. It will be used for the automatically created booking once the ride becomes available.
 
 #### Responses
 http status code | Description 
@@ -322,7 +317,6 @@ price | Yes | JSON-Object | JSON-Object with information regarding the price of 
 bookingUrl | Optional | String | A JSON object that contains rental URLs (deep links).
 `- os` | Yes | String | Identifier of the operating system.
 `- uri` | Yes | String | This URI should be a deep link specific to this ride, and should not be a general page that includes general information for the DRT-service. 
-
 
 #### Example Response 200
 ```jsonc
@@ -408,7 +402,6 @@ bookingUrl | Optional | String | A JSON object that contains rental URLs (deep l
     }
 }
 ```
-
 
 #### Response 422
 Field Name | Required | Type | Defines
