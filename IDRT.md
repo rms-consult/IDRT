@@ -605,8 +605,8 @@ Code | Description
 105 | "Ride request can't be satisfied for this number of passengers."
 106 | "The bookable option can not be satisfied: {name}."
 
-### Booking (DELETE)
-Cancel a previously made booking or reservation.
+### cancelBooking (POST)
+Cancel a previously made booking or reservation if possible. The status of the booking is changed to "canceled by user".
 
 Field Name | Required | Type | Defines
 --- | ---| --- | ---
